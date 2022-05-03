@@ -1,22 +1,22 @@
 <resources>
-    <string name="app_name">MusicPlayer</string>
-    <string name="action_settings">Settings</string>
+    <string name="app_name">Плейлист твоей мечты</string>
+    <string name="action_settings">Настройки</string>
 
-    <string name="menu_folders">Folders</string>
-    <string name="menu_playlist">Playlists</string>
-    <string name="menu_songs">Songs</string>
-    <string name="menu_artists">Artists</string>
-    <string name="menu_albums">Albums</string>
+    <string name="menu_folders">Папки</string>
+    <string name="menu_playlist">Плейлисты</string>
+    <string name="menu_songs">Песни</string>
+    <string name="menu_artists">Музыканты</string>
+    <string name="menu_albums">Альбомы</string>
 
 
-    <string name="play">Play</string>
-    <string name="enqueue">Enqueue</string>
-    <string name="play_next">Play next</string>
-    <string name="shuffle">Shuffle</string>
-    <string name="lyrics">Lyrics</string>
-    <string name="edit_tags">Edit tags</string>
-    <string name="use_as_ringtone">Use as ringtone</string>
-    <string name="delete">Delete</string>
-    <string name="add_to_playlist">Add to playlist</string>
+    <string name="play">Играть</string>
+    <string name="enqueue">В очередь</string>
+    <string name="play_next">Далее</string>
+    <string name="shuffle">Перемешать</string>
+    <string name="lyrics">Слова</string>
+    <string name="edit_tags">Редактировать теги</string>
+    <string name="use_as_ringtone">Использовать как рингтон</string>
+    <string name="delete">Удалить</string>
+    <string name="add_to_playlist">Добавить в плейлист</string>
 
 </resources>
