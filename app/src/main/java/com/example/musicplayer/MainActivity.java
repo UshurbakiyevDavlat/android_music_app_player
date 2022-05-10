@@ -53,6 +53,7 @@ import com.google.android.material.navigation.NavigationView;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.Objects;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -95,15 +96,9 @@ public class MainActivity extends AppCompatActivity {
 
                  mediaController = new MediaControllerCompat(MainActivity.this, token);
 
-                 new Runnable() {
-                     @Override
-                     public void run() {
-
-                         mediaController.registerCallback(controllerCallback);
-                         MediaControllerCompat.setMediaController(MainActivity.this, mediaController);
-                         buttonControls();
-                     }
-                 }.run();
+                 mediaController.registerCallback(controllerCallback);
+                 MediaControllerCompat.setMediaController(MainActivity.this, mediaController);
+                 buttonControls();
 
 
              } catch (Exception e) {
@@ -132,91 +127,78 @@ public class MainActivity extends AppCompatActivity {
             FoldersFragment.slashCount = 0;
         }
 
-        new Runnable() {
-            @Override
-            public void run() {
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        toolbar.setOverflowIcon(getResources().getDrawable(R.drawable.popup_menu_green));
+        toolbar.setNavigationIcon(R.drawable.nav_green);
+        setSupportActionBar(toolbar);
 
-                Toolbar toolbar = findViewById(R.id.toolbar);
-                toolbar.setOverflowIcon(getResources().getDrawable(R.drawable.popup_menu_green));
-                toolbar.setNavigationIcon(R.drawable.nav_green);
-                setSupportActionBar(toolbar);
+        preferences = getSharedPreferences("PREFERENCES", MODE_PRIVATE);
 
-                preferences = getSharedPreferences("PREFERENCES", MODE_PRIVATE);
+        playerIntent = new Intent(getApplicationContext(), MediaPlayerService.class);
 
-                playerIntent = new Intent(getApplicationContext(), MediaPlayerService.class);
+        startDestination = getSharedPreferences("START", MODE_PRIVATE);
 
-                startDestination = getSharedPreferences("START", MODE_PRIVATE);
+        storage = new StorageUtil(MainActivity.this);
 
-                storage = new StorageUtil(MainActivity.this);
-
-                control_tv_title = findViewById(R.id.control_tv_title);
-                control_tv_artist = findViewById(R.id.control_tv_artist);
-                control_iv_play = findViewById(R.id.control_iv_play);
-                control_album_art = findViewById(R.id.control_album_art);
-                control_linear_layout = findViewById(R.id.control_linear_layout);
+        control_tv_title = findViewById(R.id.control_tv_title);
+        control_tv_artist = findViewById(R.id.control_tv_artist);
+        control_iv_play = findViewById(R.id.control_iv_play);
+        control_album_art = findViewById(R.id.control_album_art);
+        control_linear_layout = findViewById(R.id.control_linear_layout);
 
 
-                drawer = findViewById(R.id.drawer_layout);
+        drawer = findViewById(R.id.drawer_layout);
+
+
+        // Passing each menu ID as a set of Ids because each
+// menu should be considered as top level destinations.
+        navigationView = findViewById(R.id.nav_view);
+
+        mAppBarConfiguration = new AppBarConfiguration.Builder(
+                R.id.nav_folders, R.id.nav_songs, R.id.nav_playlists, R.id.nav_artists, R.id.nav_albums)
+                .setDrawerLayout(drawer)
+                .build();
+
+        Objects.requireNonNull(getSupportActionBar()).setHomeAsUpIndicator(R.drawable.back_green);
+
+        navController = Navigation.findNavController(MainActivity.this, R.id.nav_host_fragment);
+        NavigationUI.setupActionBarWithNavController(MainActivity.this, navController, mAppBarConfiguration);
+        NavigationUI.setupWithNavController(navigationView, navController);
+
+        navGraph = navController.getGraph();
+        if (preferences.getString("START", "None").equals("None")) {
+            navGraph.setStartDestination(startDestination.getInt("ID", R.id.nav_songs));
+        } else {
+            switch (preferences.getString("START", "Songs")){
+
+                case "Songs":
+                    navGraph.setStartDestination(R.id.nav_songs);
+                    break;
+
+                case "Albums":
+                    navGraph.setStartDestination(R.id.nav_albums);
+                    break;
+
+                case "Artists":
+                    navGraph.setStartDestination(R.id.nav_artists);
+                    break;
+
+                case "Folders":
+                    navGraph.setStartDestination(R.id.nav_folders);
+                    break;
+
+                case "Playlists":
+                    navGraph.setStartDestination(R.id.nav_playlists);
+                    break;
             }
-        }.run();
 
+        }
 
-        new Runnable() {
-            @Override
-            public void run() {
+        if (savedInstanceState != null && savedInstanceState.getBundle("BUNDLE_NAVSTATE") != null) {
+            navController.restoreState(savedInstanceState.getBundle("BUNDLE_NAVSTATE"));
+        }
+        else navController.setGraph(navGraph);
 
-                // Passing each menu ID as a set of Ids because each
-                // menu should be considered as top level destinations.
-                navigationView = findViewById(R.id.nav_view);
-
-                mAppBarConfiguration = new AppBarConfiguration.Builder(
-                        R.id.nav_folders, R.id.nav_songs, R.id.nav_playlists, R.id.nav_artists, R.id.nav_albums)
-                        .setDrawerLayout(drawer)
-                        .build();
-
-                getSupportActionBar().setHomeAsUpIndicator(R.drawable.back_green);
-
-                navController = Navigation.findNavController(MainActivity.this, R.id.nav_host_fragment);
-                NavigationUI.setupActionBarWithNavController(MainActivity.this, navController, mAppBarConfiguration);
-                NavigationUI.setupWithNavController(navigationView, navController);
-
-                navGraph = navController.getGraph();
-                if (preferences.getString("START", "None").equals("None")) {
-                    navGraph.setStartDestination(startDestination.getInt("ID", R.id.nav_songs));
-                } else {
-                    switch (preferences.getString("START", "Songs")){
-
-                        case "Songs":
-                            navGraph.setStartDestination(R.id.nav_songs);
-                            break;
-
-                        case "Albums":
-                            navGraph.setStartDestination(R.id.nav_albums);
-                            break;
-
-                        case "Artists":
-                            navGraph.setStartDestination(R.id.nav_artists);
-                            break;
-
-                        case "Folders":
-                            navGraph.setStartDestination(R.id.nav_folders);
-                            break;
-
-                        case "Playlists":
-                            navGraph.setStartDestination(R.id.nav_playlists);
-                            break;
-                    }
-                    
-                }
-
-                if (savedInstanceState != null && savedInstanceState.getBundle("BUNDLE_NAVSTATE") != null) {
-                    navController.restoreState(savedInstanceState.getBundle("BUNDLE_NAVSTATE"));
-                }
-                else navController.setGraph(navGraph);
-
-
-            }
-        }.run();
 
         control_linear_layout.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -294,12 +276,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
-        new Runnable() {
-            @Override
-            public void run() {
-                mediaBrowser.connect();
-            }
-        }.run();
+        mediaBrowser.connect();
     }
 
     @Override
@@ -307,11 +284,11 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
 
         if (SearchActivity.openAlbumSongs) {
-            NavHostFragment.findNavController(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment)).navigate(R.id.action_global_albumSongsFragment2);
+            NavHostFragment.findNavController(Objects.requireNonNull(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment))).navigate(R.id.action_global_albumSongsFragment2);
             SearchActivity.openAlbumSongs = false;
         }
         else if (SearchActivity.openArtistAlbums){
-            NavHostFragment.findNavController(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment)).navigate(R.id.action_global_artist_albums_frag);
+            NavHostFragment.findNavController(Objects.requireNonNull(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment))).navigate(R.id.action_global_artist_albums_frag);
             SearchActivity.openArtistAlbums = false;
         }
 
@@ -342,13 +319,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void playAudio() {
 
-        new Runnable() {
-            @Override
-            public void run() {
-                startService(playerIntent);
-                serviceBound = true;
-            }
-        }.run();
+        startService(playerIntent);
+        serviceBound = true;
     }
 
 
@@ -356,109 +328,93 @@ public class MainActivity extends AppCompatActivity {
 
     private void buttonControls(){
 
-        new Runnable() {
-            @Override
-            public void run() {
+        if (MediaPlayerService.activeAudio == null) {
 
-                if (MediaPlayerService.activeAudio == null) {
+            control_tv_title.setText(storage.loadAudio().get(storage.loadAudioIndexAndPosition()[0]).getTitle());
+            control_tv_artist.setText(storage.loadAudio().get(storage.loadAudioIndexAndPosition()[0]).getArtist());
 
-                    control_tv_title.setText(storage.loadAudio().get(storage.loadAudioIndexAndPosition()[0]).getTitle());
-                    control_tv_artist.setText(storage.loadAudio().get(storage.loadAudioIndexAndPosition()[0]).getArtist());
-
-                    if (storage.loadAudio().get(storage.loadAudioIndexAndPosition()[0]).getAlbumid() != -100) {
-                        Glide.with(MainActivity.this).load(ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), storage.loadAudio().get(storage.loadAudioIndexAndPosition()[0]).getAlbumid()))
-                                .error(R.mipmap.cassette_image_foreground)
-                                .centerCrop()
-                                .fallback(R.mipmap.cassette_image_foreground)
-                                .into(control_album_art);
-                    }
-                    else{
-                        MediaMetadataRetriever m = new MediaMetadataRetriever();
-                        m.setDataSource(storage.loadAudio().get(storage.loadAudioIndexAndPosition()[0]).getData());
-                        Glide.with(MainActivity.this).load(m.getEmbeddedPicture())
-                                .error(R.mipmap.cassette_image_foreground)
-                                .centerCrop()
-                                .fallback(R.mipmap.cassette_image_foreground)
-                                .into(control_album_art);
-                    }
-                }
-                else{
-
-                    control_tv_title.setText(MediaPlayerService.activeAudio.getTitle());
-                    control_tv_artist.setText(MediaPlayerService.activeAudio.getArtist());
-
-                    if (MediaPlayerService.activeAudio.getAlbumid() != -100) {
-                        Glide.with(MainActivity.this).load(ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), MediaPlayerService.activeAudio.getAlbumid()))
-                                .error(R.mipmap.cassette_image_foreground)
-                                .centerCrop()
-                                .fallback(R.mipmap.cassette_image_foreground)
-                                .into(control_album_art);
-                    }
-                    else {
-                        MediaMetadataRetriever m = new MediaMetadataRetriever();
-                        m.setDataSource(MediaPlayerService.activeAudio.getData());
-                        Glide.with(MainActivity.this).load(m.getEmbeddedPicture())
-                                .error(R.mipmap.cassette_image_foreground)
-                                .centerCrop()
-                                .fallback(R.mipmap.cassette_image_foreground)
-                                .into(control_album_art);
-                    }
-                }
-
+            if (storage.loadAudio().get(storage.loadAudioIndexAndPosition()[0]).getAlbumid() != -100) {
+                Glide.with(MainActivity.this).load(ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), storage.loadAudio().get(storage.loadAudioIndexAndPosition()[0]).getAlbumid()))
+                        .error(R.mipmap.cassette_image_foreground)
+                        .centerCrop()
+                        .fallback(R.mipmap.cassette_image_foreground)
+                        .into(control_album_art);
             }
+            else{
+                MediaMetadataRetriever m = new MediaMetadataRetriever();
+                m.setDataSource(storage.loadAudio().get(storage.loadAudioIndexAndPosition()[0]).getData());
+                Glide.with(MainActivity.this).load(m.getEmbeddedPicture())
+                        .error(R.mipmap.cassette_image_foreground)
+                        .centerCrop()
+                        .fallback(R.mipmap.cassette_image_foreground)
+                        .into(control_album_art);
+            }
+        }
+        else{
 
-        }.run();
+            control_tv_title.setText(MediaPlayerService.activeAudio.getTitle());
+            control_tv_artist.setText(MediaPlayerService.activeAudio.getArtist());
 
-        new Runnable() {
+            if (MediaPlayerService.activeAudio.getAlbumid() != -100) {
+                Glide.with(MainActivity.this).load(ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), MediaPlayerService.activeAudio.getAlbumid()))
+                        .error(R.mipmap.cassette_image_foreground)
+                        .centerCrop()
+                        .fallback(R.mipmap.cassette_image_foreground)
+                        .into(control_album_art);
+            }
+            else {
+                MediaMetadataRetriever m = new MediaMetadataRetriever();
+                m.setDataSource(MediaPlayerService.activeAudio.getData());
+                Glide.with(MainActivity.this).load(m.getEmbeddedPicture())
+                        .error(R.mipmap.cassette_image_foreground)
+                        .centerCrop()
+                        .fallback(R.mipmap.cassette_image_foreground)
+                        .into(control_album_art);
+            }
+        }
+
+        if (MediaControllerCompat.getMediaController(MainActivity.this).getPlaybackState().getState() == PlaybackStateCompat.STATE_PLAYING){
+
+            control_iv_play.setImageResource(R.drawable.pause_green);
+        }
+        else {
+
+            control_iv_play.setImageResource(R.drawable.play_green);
+        }
+
+        control_linear_layout.setVisibility(View.VISIBLE);
+
+        if (control_linear_layout.getVisibility() == View.VISIBLE){
+
+            LinearLayout nav_host_linear_layout = findViewById(R.id.main_fragment);
+            CoordinatorLayout.LayoutParams layoutParams = (CoordinatorLayout.LayoutParams) nav_host_linear_layout.getLayoutParams();
+            layoutParams.setMargins(0,0,0, bottom);
+            nav_host_linear_layout.setLayoutParams(layoutParams);
+        }
+
+        control_iv_play.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void run() {
+            public void onClick(View v) {
 
                 if (MediaControllerCompat.getMediaController(MainActivity.this).getPlaybackState().getState() == PlaybackStateCompat.STATE_PLAYING){
 
+
+                    MediaControllerCompat.getMediaController(MainActivity.this).getTransportControls().pause();
+                    control_iv_play.setImageResource(R.drawable.play_green);
+                }
+                else if (MediaControllerCompat.getMediaController(MainActivity.this).getPlaybackState().getState() == PlaybackStateCompat.STATE_PAUSED){
+
+                    MediaControllerCompat.getMediaController(MainActivity.this).getTransportControls().play();
                     control_iv_play.setImageResource(R.drawable.pause_green);
                 }
                 else {
 
-                    control_iv_play.setImageResource(R.drawable.play_green);
+                    playAudio();
                 }
 
-                control_linear_layout.setVisibility(View.VISIBLE);
-
-                if (control_linear_layout.getVisibility() == View.VISIBLE){
-
-                    LinearLayout nav_host_linear_layout = findViewById(R.id.main_fragment);
-                    CoordinatorLayout.LayoutParams layoutParams = (CoordinatorLayout.LayoutParams) nav_host_linear_layout.getLayoutParams();
-                    layoutParams.setMargins(0,0,0, bottom);
-                    nav_host_linear_layout.setLayoutParams(layoutParams);
-                }
-
-                control_iv_play.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-
-                        if (MediaControllerCompat.getMediaController(MainActivity.this).getPlaybackState().getState() == PlaybackStateCompat.STATE_PLAYING){
-
-
-                            MediaControllerCompat.getMediaController(MainActivity.this).getTransportControls().pause();
-                            control_iv_play.setImageResource(R.drawable.play_green);
-                        }
-                        else if (MediaControllerCompat.getMediaController(MainActivity.this).getPlaybackState().getState() == PlaybackStateCompat.STATE_PAUSED){
-
-                            MediaControllerCompat.getMediaController(MainActivity.this).getTransportControls().play();
-                            control_iv_play.setImageResource(R.drawable.pause_green);
-                        }
-                        else {
-
-                            playAudio();
-                        }
-
-
-                    }
-                });
 
             }
-
-        }.run();
+        });
 
 
     }
@@ -556,7 +512,7 @@ public class MainActivity extends AppCompatActivity {
     public void onFolderClicked(MenuItem item) {
         FoldersFragment.currentPath = "/";
         FoldersFragment.slashCount = 0;
-        NavHostFragment.findNavController(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment)).navigate(R.id.action_global_nav_folders);
+        NavHostFragment.findNavController(Objects.requireNonNull(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment))).navigate(R.id.action_global_nav_folders);
         drawer.closeDrawer(GravityCompat.START);
 
         if (preferences.getString("START", "None").equals("None")) {
@@ -570,7 +526,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onAlbumClicked(MenuItem item) {
-        NavHostFragment.findNavController(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment)).navigate(R.id.nav_albums);
+        NavHostFragment.findNavController(Objects.requireNonNull(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment))).navigate(R.id.nav_albums);
         drawer.closeDrawer(GravityCompat.START);
 
         if (preferences.getString("START", "None").equals("None")) {
@@ -584,7 +540,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onArtistClicked(MenuItem item) {
-        NavHostFragment.findNavController(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment)).navigate(R.id.nav_artists);
+        NavHostFragment.findNavController(Objects.requireNonNull(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment))).navigate(R.id.nav_artists);
         drawer.closeDrawer(GravityCompat.START);
 
         if (preferences.getString("START", "None").equals("None")) {
@@ -598,7 +554,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onSongClicked(MenuItem item) {
-        NavHostFragment.findNavController(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment)).navigate(R.id.nav_songs);
+        NavHostFragment.findNavController(Objects.requireNonNull(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment))).navigate(R.id.nav_songs);
         drawer.closeDrawer(GravityCompat.START);
 
         if (preferences.getString("START", "None").equals("None")) {
@@ -612,7 +568,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onPlaylistClicked(MenuItem item) {
-        NavHostFragment.findNavController(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment)).navigate(R.id.nav_playlists);
+        NavHostFragment.findNavController(Objects.requireNonNull(getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment))).navigate(R.id.nav_playlists);
         drawer.closeDrawer(GravityCompat.START);
 
         if (preferences.getString("START", "None").equals("None")) {
@@ -703,10 +659,8 @@ public class MainActivity extends AppCompatActivity {
                 song.add(new Songs(id, data, title, artist, album, artistId, albumId, trackNumber, duration, year));
             }
             else throw new Exception("bruh");
-            if (cursor != null) {
 
-                cursor.close();
-            }
+            cursor.close();
         }catch (Exception e){
             MediaMetadataRetriever m = new MediaMetadataRetriever();
             m.setDataSource(path);

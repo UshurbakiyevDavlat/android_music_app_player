@@ -35,6 +35,7 @@ import com.example.musicplayer.R;
 import com.example.musicplayer.StorageUtil;
 import com.example.musicplayer.adapters.PlaylistItemClicked;
 import com.example.musicplayer.adapters.SearchAdapter;
+import com.example.musicplayer.adapters.SearchAdapter2;
 import com.example.musicplayer.adapters.SearchAlbumClicked;
 import com.example.musicplayer.adapters.SearchArtistClicked;
 import com.example.musicplayer.adapters.SearchSongClicked;
@@ -46,20 +47,42 @@ import com.example.musicplayer.nowplaying.NowPlaying;
 import com.example.musicplayer.ui.albums.AlbumsFragment;
 import com.example.musicplayer.ui.artists.ArtistsFragment;
 import com.example.musicplayer.ui.songs.SongsFragment;
+import com.google.gson.GsonBuilder;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 
 import static com.example.musicplayer.MainActivity.UNIQUE_REQUEST_CODE;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+//import retrofit2.Call;
+//import retrofit2.Callback;
+
 
 public class SearchActivity extends AppCompatActivity implements SearchSongClicked, SearchAlbumClicked, SearchArtistClicked, PlaylistItemClicked {
 
     private RecyclerView recyclerView;
     private SearchAdapter myAdapter;
+    private SearchAdapter2 myAdapter2;
     private SearchView searchView;
     private GridLayoutManager layoutManager;
     private StorageUtil storage;
 
+    private String response_data;
+    private final OkHttpClient client = new OkHttpClient();
     private ArrayList<Songs> songs;
+//    private Call<ExampleJson2KtPOJO> songs2;
     private ArrayList<Albums> albums;
     private ArrayList<Artists> artists;
 
@@ -69,25 +92,64 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
     public static boolean openAlbumSongs = false;
     public static boolean openArtistAlbums = false;
 
+    private final GsonBuilder gsonBuilder = new GsonBuilder();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search);
 
+//        OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+//        httpClient.addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY));
+//        httpClient.addInterceptor(new Interceptor() {
+//            @NonNull
+//            @Override
+//            public Response intercept(@NonNull Interceptor.Chain chain) throws IOException {
+//                Request original = chain.request();
+//
+//                // Request customization: add request headers
+//                Request.Builder requestBuilder = original.newBuilder()
+//                        .header("Authorization", "auth-value") // <-- this is the important line
+//                        .addHeader("X-RapidAPI-Host", "shazam.p.rapidapi.com")
+//                        .addHeader("X-RapidAPI-Key", "66e46b4488msh6bf45a5f752f5a8p1f408fjsnf5af34ba801e");
+//
+//                Request request = requestBuilder.build();
+//                return chain.proceed(request);
+//            }
+//        });
+//
+//        OkHttpClient client = httpClient.build();
+//
+//
+//        Retrofit retrofit = new Retrofit.Builder()
+//                .baseUrl("https://shazam.p.rapidapi.com/")
+//                .addConverterFactory(
+//                        GsonConverterFactory.create(
+//                                gsonBuilder.setLenient().create()
+//                        )
+//                )
+//                .client(client)
+//                .build();
+//
+//        IApiService service = retrofit.create(IApiService.class);
+
+
+
+
+
         Toolbar toolbar = findViewById(R.id.search_toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setHomeAsUpIndicator(R.drawable.back_green);
+        Objects.requireNonNull(getSupportActionBar()).setHomeAsUpIndicator(R.drawable.back_green);
         getSupportActionBar().setTitle("");
 
         storage = new StorageUtil(this);
 
-        searchView =findViewById(R.id.search_view);
+        searchView = findViewById(R.id.search_view);
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE )!= PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
 
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, UNIQUE_REQUEST_CODE);
-        }
-        else{
+        } else {
 
             recyclerView = findViewById(R.id.search_recycler_view);
             recyclerView.setHasFixedSize(true);
@@ -107,86 +169,106 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
             searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
                 @Override
                 public boolean onQueryTextSubmit(final String query) {
-
-                    if (!query.isEmpty() && !query.trim().equals("")) {
-
-
-                        new Runnable() {
-                            @Override
-                            public void run() {
-
-                                new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        songs = loadAudio(query.trim());
-                                    }
-                                }.run();
-
-                                new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        albums = loadAlbums(query.trim());
-                                    }
-                                }.run();
-
-                                new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        artists = loadArtists(query.trim());
-                                    }
-                                }.run();
-
-                                myAdapter = new SearchAdapter(SearchActivity.this, songs, albums, artists, query.trim().toLowerCase());
-                                recyclerView.setAdapter(myAdapter);
-
-                            }
-                        }.run();
-
-                    } else {
-
-                        myAdapter = null;
-                        recyclerView.setAdapter(null);
-
-                    }
                     return true;
                 }
 
                 @Override
                 public boolean onQueryTextChange(final String newText) {
 
+                    Request.Builder dataRequest = new Request.Builder()
+                            .header("Authorization", "auth-value")
+                            .addHeader("X-RapidAPI-Host", "shazam.p.rapidapi.com")
+                            .addHeader("X-RapidAPI-Key", "66e46b4488msh6bf45a5f752f5a8p1f408fjsnf5af34ba801e")
+                            .url("https://shazam.p.rapidapi.com/search?term=" + newText);
+
+                    Request request = dataRequest.build();
+
                     if (!newText.isEmpty() && !newText.trim().equals("")) {
 
+                        client.newCall(request).enqueue(new Callback() {
 
-                        new Runnable() {
                             @Override
-                            public void run() {
-
-                                new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        songs = loadAudio(newText.trim());
-                                    }
-                                }.run();
-
-                                new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        albums = loadAlbums(newText.trim());
-                                    }
-                                }.run();
-
-                                new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        artists = loadArtists(newText.trim());
-                                    }
-                                }.run();
-
-                                myAdapter = new SearchAdapter(SearchActivity.this, songs, albums, artists, newText.trim().toLowerCase());
-                                recyclerView.setAdapter(myAdapter);
-
+                            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                                if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+                                String r = Objects.requireNonNull(response.body()).string();
+                                System.out.println("Response string body -> " + r);
+                                System.out.println("Response raw body -> " + response.body());
+                                try {
+                                    parse(r);
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
+                                }
                             }
-                        }.run();
+
+                            @Override
+                            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                                e.printStackTrace();
+                            }
+
+                            private void parse(String response) throws JSONException {
+                                JSONObject tracks = new JSONObject(response);
+
+                                JSONObject hits = tracks.getJSONObject("tracks");
+                                JSONArray trackArr = hits.getJSONArray("hits");
+                                JSONObject track;
+                                List<Object> trackInfo = new ArrayList<>();
+
+                                for (int i = 0; i < trackArr.length() - 1; i++) {
+                                     track = trackArr.getJSONObject(i);
+
+                                    Object trackAtrTitle = track.getJSONObject("track").get("title");
+                                    Object trackAtrSubTitle = track.getJSONObject("track").get("subtitle");
+                                    Object trackAtrShareLink = track.getJSONObject("track").getJSONObject("share").get("href");
+                                    Object trackAtrShareImage = track.getJSONObject("track").getJSONObject("share").get("href");
+
+                                    trackInfo.add(track.getJSONObject("track"));
+                                }
+                                System.out.println(trackInfo);
+                            }
+                        });
+//                        Thread thread = new Thread(new Runnable() {
+//
+//                            @Override
+//                            public void run() {
+//                                try {
+//                                    songs2 = service.groupList(newText.trim());
+//                                    myAdapter2 = new SearchAdapter2(SearchActivity.this, songs2, newText.trim().toLowerCase());
+//                                    songs2.enqueue(new Callback<ExampleJson2KtPOJO>() {
+//                                        @Override
+//                                        public void onResponse(@NonNull Call<ExampleJson2KtPOJO> call, @NonNull retrofit2.Response<ExampleJson2KtPOJO> response) {
+//                                            System.out.println("Request -> " + call.request().body());
+//                                            System.out.println("Response string -> " + response.body());
+//                                            System.out.println("Response model -> " + (response.body() != null ? response.body().getTracks(): null));
+//                                        }
+//
+//                                        @Override
+//                                        public void onFailure(@NonNull Call<ExampleJson2KtPOJO> call, @NonNull Throwable t) {
+//                                            System.out.println(t.getMessage());
+//                                        }
+//
+//                                    });
+//
+//                                    recyclerView.setAdapter(myAdapter2);
+//                                } catch (Exception e) {
+//                                    e.printStackTrace();
+//                                }
+//                            }
+//                        });
+//
+//                        thread.start();
+//
+//                        songs = loadAudio(newText.trim());
+//
+//                        albums = loadAlbums(newText.trim());
+//
+//                        artists = loadArtists(newText.trim());
+//
+//                        myAdapter = new SearchAdapter(SearchActivity.this, songs, albums, artists, newText.trim().toLowerCase());
+//
+
+
+                        //recyclerView.setAdapter(myAdapter);
+
                     } else {
                         myAdapter = null;
                         recyclerView.setAdapter(null);
@@ -204,10 +286,10 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
 
-        if (requestCode == UNIQUE_REQUEST_CODE){
+        if (requestCode == UNIQUE_REQUEST_CODE) {
 
             try {
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
                     recyclerView = findViewById(R.id.search_recycler_view);
                     recyclerView.setHasFixedSize(true);
@@ -316,12 +398,11 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
                         }
                     });
 
-                }
-                else{
+                } else {
 
                     Toast.makeText(this, "What the hell bro!", Toast.LENGTH_SHORT).show();
                 }
-            }catch (Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -329,19 +410,17 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
     }
 
 
-
-    private ArrayList<Songs> loadAudio(String search)
-    {
+    private ArrayList<Songs> loadAudio(String search) {
         ArrayList<Songs> arrayList = new ArrayList<>();
 
         ContentResolver contentResolver = getContentResolver();
         Uri uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-        String selection = android.provider.MediaStore.Audio.Media.IS_MUSIC + "!= 0 AND " + MediaStore.Audio.Media.TITLE + " Like ? " ;
+        String selection = android.provider.MediaStore.Audio.Media.IS_MUSIC + "!= 0 AND " + MediaStore.Audio.Media.TITLE + " Like ? ";
         String sortOrder = MediaStore.Audio.Media.DEFAULT_SORT_ORDER;
-        Cursor cursor = contentResolver.query(uri, new String[]{"_id","_data", "title", "artist", "album", "duration", "track", "artist_id", "album_id", "year"}, selection, new String[]{"%" + search + "%"}, sortOrder);
+        Cursor cursor = contentResolver.query(uri, new String[]{"_id", "_data", "title", "artist", "album", "duration", "track", "artist_id", "album_id", "year"}, selection, new String[]{"%" + search + "%"}, sortOrder);
 
 
-        if (cursor != null && cursor.getCount()>0) {
+        if (cursor != null && cursor.getCount() > 0) {
 
             cursor.moveToFirst();
 
@@ -355,7 +434,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
                 int trackNumber = cursor.getInt(6);
                 long artistId = cursor.getInt(7);
                 long albumId = cursor.getLong(8);
-                long year= cursor.getLong(9);
+                long year = cursor.getLong(9);
 
                 arrayList.add(new Songs(id, data, title, artist, album, artistId, albumId, trackNumber, duration, year));
             }
@@ -370,7 +449,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
         return arrayList;
     }
 
-    private ArrayList<Albums> loadAlbums(String query){
+    private ArrayList<Albums> loadAlbums(String query) {
 
         ArrayList<Albums> arrayList = new ArrayList<>();
 
@@ -380,9 +459,9 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
         String selection = MediaStore.Audio.Albums.ALBUM + " LIKE ? ";
 
 
-        Cursor cursor = contentResolver.query(uri, new String[]{"_id","album","album_art", "numsongs", "artist"}, selection, new String[]{"%"+query+"%"}, sortOrder);
+        Cursor cursor = contentResolver.query(uri, new String[]{"_id", "album", "album_art", "numsongs", "artist"}, selection, new String[]{"%" + query + "%"}, sortOrder);
 
-        if (cursor != null && cursor.getCount()>0) {
+        if (cursor != null && cursor.getCount() > 0) {
 
             cursor.moveToFirst();
 
@@ -410,7 +489,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
 
     }
 
-    private ArrayList<Artists> loadArtists(String query){
+    private ArrayList<Artists> loadArtists(String query) {
 
         ArrayList<Artists> arrayList = new ArrayList<>();
 
@@ -419,9 +498,9 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
         String sortOrder = MediaStore.Audio.Artists.DEFAULT_SORT_ORDER;
         String selection = MediaStore.Audio.Artists.ARTIST + " LIKE ? ";
 
-        Cursor cursor = contentResolver.query(uri, new String[]{"_id", "artist"}, selection, new String[]{"%"+query+"%"}, sortOrder);
+        Cursor cursor = contentResolver.query(uri, new String[]{"_id", "artist"}, selection, new String[]{"%" + query + "%"}, sortOrder);
 
-        if (cursor != null && cursor.getCount()>0) {
+        if (cursor != null && cursor.getCount() > 0) {
 
             cursor.moveToFirst();
 
@@ -450,8 +529,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
 
         if (actionMode != null) {
             toggleSelection(index);
-        }
-        else{
+        } else {
             playAudio(song);
             myAdapter.notifyDataSetChanged();
         }
@@ -469,8 +547,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
 
         if (actionMode != null) {
             toggleSelection(index);
-        }
-        else {
+        } else {
             myAdapter.notifyDataSetChanged();
             AlbumsFragment.album = album;
             openAlbumSongs = true;
@@ -488,8 +565,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
     public void onSearchArtistClicked(int index, Artists artist) {
         if (actionMode != null) {
             toggleSelection(index);
-        }
-        else {
+        } else {
             myAdapter.notifyDataSetChanged();
             ArtistsFragment.artist = artist;
             openArtistAlbums = true;
@@ -517,10 +593,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
             startService(new Intent(getApplicationContext(), MediaPlayerService.class));
             MainActivity.serviceBound = true;
 
-        }
-
-
-        else {
+        } else {
             //Store the new audioIndex to SharedPreferences
             StorageUtil storage = new StorageUtil(this);
             ArrayList<Songs> songs = new ArrayList<>();
@@ -581,7 +654,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
                 }
 
 
-                for (int i =0; i<mySongs.size(); i++) {
+                for (int i = 0; i < mySongs.size(); i++) {
 
                     contentValues.clear();
                     contentValues.put("audio_id", mySongs.get(i).getId());
@@ -589,8 +662,10 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
                     contentResolver.insert(uri, contentValues);
                     playOrder++;
                 }
-                if (mySongs.size()>1) Toast.makeText(SearchActivity.this, mySongs.size() + "songs have been added to the playlist!", Toast.LENGTH_SHORT).show();
-                else Toast.makeText(SearchActivity.this, "1 song has been added to the playlist!", Toast.LENGTH_SHORT).show();
+                if (mySongs.size() > 1)
+                    Toast.makeText(SearchActivity.this, mySongs.size() + "songs have been added to the playlist!", Toast.LENGTH_SHORT).show();
+                else
+                    Toast.makeText(SearchActivity.this, "1 song has been added to the playlist!", Toast.LENGTH_SHORT).show();
 
 
             }
@@ -602,7 +677,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
 
         @Override
         public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-            mode.getMenuInflater().inflate (R.menu.selection_menu, menu);
+            mode.getMenuInflater().inflate(R.menu.selection_menu, menu);
             return true;
         }
 
@@ -620,13 +695,16 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
             int songSize = 0;
             int albumSize = 0;
 
-            if (songs.size() > 0)songSize = songs.size()+1;
-            if (albums.size() > 0) albumSize = albums.size()+1;
+            if (songs.size() > 0) songSize = songs.size() + 1;
+            if (albums.size() > 0) albumSize = albums.size() + 1;
 
-            for (int i=0; i<indices.size(); i++){
-                if (indices.get(i) < songSize && songSize != 0) selectedSongs.add(songs.get(indices.get(i)-1));
-                else if (indices.get(i) > songSize && indices.get(i) < songSize + albumSize && albumSize != 0) selectedSongs.addAll(DataLoader.loadAudio(albums.get(indices.get(i)-songSize-1).getId(), 1, SearchActivity.this, getSharedPreferences("AlbumSongSort", Context.MODE_PRIVATE)));
-                else selectedSongs.addAll(myAdapter.loadArtistAudio(artists.get(indices.get(i)-songSize-albumSize-1).getId()));
+            for (int i = 0; i < indices.size(); i++) {
+                if (indices.get(i) < songSize && songSize != 0)
+                    selectedSongs.add(songs.get(indices.get(i) - 1));
+                else if (indices.get(i) > songSize && indices.get(i) < songSize + albumSize && albumSize != 0)
+                    selectedSongs.addAll(DataLoader.loadAudio(albums.get(indices.get(i) - songSize - 1).getId(), 1, SearchActivity.this, getSharedPreferences("AlbumSongSort", Context.MODE_PRIVATE)));
+                else
+                    selectedSongs.addAll(myAdapter.loadArtistAudio(artists.get(indices.get(i) - songSize - albumSize - 1).getId()));
             }
 
             switch (item.getTitle().toString()) {
@@ -637,20 +715,26 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
                     return true;
 
                 case "Enqueue":
-                    if (MediaPlayerService.audioList != null) MediaPlayerService.audioList.addAll(selectedSongs);
+                    if (MediaPlayerService.audioList != null)
+                        MediaPlayerService.audioList.addAll(selectedSongs);
                     else MediaPlayerService.audioList = selectedSongs;
                     storage.storeAudio(MediaPlayerService.audioList);
-                    if (selectedSongs.size()>1) Toast.makeText(SearchActivity.this, selectedSongs.size() + "songs have been added to the queue!", Toast.LENGTH_SHORT).show();
-                    else Toast.makeText(SearchActivity.this, "1 song has been added to the queue!", Toast.LENGTH_SHORT).show();
+                    if (selectedSongs.size() > 1)
+                        Toast.makeText(SearchActivity.this, selectedSongs.size() + "songs have been added to the queue!", Toast.LENGTH_SHORT).show();
+                    else
+                        Toast.makeText(SearchActivity.this, "1 song has been added to the queue!", Toast.LENGTH_SHORT).show();
                     mode.finish();
                     return true;
 
                 case "Play next":
-                    if (MediaPlayerService.audioList != null) MediaPlayerService.audioList.addAll(MediaPlayerService.audioIndex+1, selectedSongs);
+                    if (MediaPlayerService.audioList != null)
+                        MediaPlayerService.audioList.addAll(MediaPlayerService.audioIndex + 1, selectedSongs);
                     else MediaPlayerService.audioList = selectedSongs;
                     storage.storeAudio(MediaPlayerService.audioList);
-                    if (selectedSongs.size()>1) Toast.makeText(SearchActivity.this, selectedSongs.size() + "songs have been added to the queue!", Toast.LENGTH_SHORT).show();
-                    else Toast.makeText(SearchActivity.this, "1 song has been added to the queue!", Toast.LENGTH_SHORT).show();
+                    if (selectedSongs.size() > 1)
+                        Toast.makeText(SearchActivity.this, selectedSongs.size() + "songs have been added to the queue!", Toast.LENGTH_SHORT).show();
+                    else
+                        Toast.makeText(SearchActivity.this, "1 song has been added to the queue!", Toast.LENGTH_SHORT).show();
                     mode.finish();
                     return true;
 
@@ -695,10 +779,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
             startService(intent);
             MainActivity.serviceBound = true;
 
-        }
-
-
-        else {
+        } else {
             //Store the new audioIndex to SharedPreferences
             storage.storeAudio(songs);
             storage.storeAudioIndexAndPostion(0, 0);
@@ -743,8 +824,8 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == 69){
-            if (resultCode == RESULT_OK){
+        if (requestCode == 69) {
+            if (resultCode == RESULT_OK) {
 
                 try {
                     RingtoneManager.setActualDefaultRingtoneUri(this, RingtoneManager.TYPE_RINGTONE, ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, MediaPlayerService.activeAudio.getId()));
@@ -753,8 +834,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
                     Toast.makeText(this, "Permission was not Granted!", Toast.LENGTH_SHORT).show();
                 }
 
-            }
-            else {
+            } else {
 
                 Toast.makeText(this, "Permission was not Granted!", Toast.LENGTH_SHORT).show();
             }
@@ -780,7 +860,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
 
     @Override
     public void onBackPressed() {
-        if(isTaskRoot()){
+        if (isTaskRoot()) {
             startActivity(new Intent(this, MainActivity.class));
         }
         super.onBackPressed();

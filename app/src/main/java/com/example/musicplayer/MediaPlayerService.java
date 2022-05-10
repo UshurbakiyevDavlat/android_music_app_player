@@ -92,8 +92,11 @@ public class MediaPlayerService extends MediaBrowserServiceCompat implements Med
 
         storage = new StorageUtil(getApplicationContext());
         //Listen for new Audio to play -- BroadcastReceiver
-        registerPlayNewAudio();
 
+
+
+        registerPlayNewAudio();
+        unregisterReceiver(playNewAudio);
 
         new Runnable() {
             @Override
