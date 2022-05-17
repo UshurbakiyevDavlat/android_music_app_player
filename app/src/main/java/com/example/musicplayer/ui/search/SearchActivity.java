@@ -51,7 +51,6 @@ import com.google.gson.GsonBuilder;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
@@ -85,7 +84,7 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
 //    private Call<ExampleJson2KtPOJO> songs2;
     private ArrayList<Albums> albums;
     private ArrayList<Artists> artists;
-
+    private  List<JSONObject> trackInfo;
     private ActionMode actionMode;
     private ActionModeCallback actionModeCallback = new ActionModeCallback();
 
@@ -205,13 +204,13 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
                                 e.printStackTrace();
                             }
 
-                            private void parse(String response) throws JSONException {
+                            private void parse(String response) throws JSONException, IOException {
                                 JSONObject tracks = new JSONObject(response);
 
                                 JSONObject hits = tracks.getJSONObject("tracks");
                                 JSONArray trackArr = hits.getJSONArray("hits");
                                 JSONObject track;
-                                List<Object> trackInfo = new ArrayList<>();
+                                 trackInfo = new ArrayList<>();
 
                                 for (int i = 0; i < trackArr.length() - 1; i++) {
                                      track = trackArr.getJSONObject(i);
@@ -222,11 +221,19 @@ public class SearchActivity extends AppCompatActivity implements SearchSongClick
                                     Object trackAtrShareImage = track.getJSONObject("track").getJSONObject("share").get("href");
 
                                     trackInfo.add(track.getJSONObject("track"));
+                                    myAdapter2 = new SearchAdapter2(SearchActivity.this, trackInfo,newText.trim().toLowerCase());
+
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            recyclerView.setAdapter(myAdapter2);
+                                        }
+                                    });
                                 }
-                                System.out.println(trackInfo);
                             }
                         });
-//                        Thread thread = new Thread(new Runnable() {
+
+                        //                        Thread thread = new Thread(new Runnable() {
 //
 //                            @Override
 //                            public void run() {
